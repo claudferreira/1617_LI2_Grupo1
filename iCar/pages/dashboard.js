@@ -1,7 +1,6 @@
 import withRedux from 'next-redux-wrapper'
 import Link from 'next/link'
 import { Component } from 'react'
-import { connect } from 'react-redux'
 import { Header, Icon } from 'semantic-ui-react'
 
 import Layout from '../components/layout'
@@ -14,39 +13,39 @@ class DashboardPage extends Component {
         <ul>
           <li>
             <Header as="h3" icon textAlign="center">
-              <Icon name="users" color="orange" inverted circular />
+              <Icon name="phone" color="orange" inverted circular />
               <Header.Content>Telefone</Header.Content>
             </Header>
           </li>
           <li>
             <Header as="h3" icon textAlign="center">
-              <Icon name="users" color="orange" inverted circular />
+              <Icon name="music" color="orange" inverted circular />
               <Header.Content>Música</Header.Content>
             </Header>
           </li>
           <li>
             <Header as="h3" icon textAlign="center">
-              <Icon name="users" color="orange" inverted circular />
+              <Icon name="location arrow" color="orange" inverted circular />
               <Header.Content>Navegação</Header.Content>
             </Header>
           </li>
           <li>
             <Header as="h3" icon textAlign="center">
-              <Icon name="users" color="orange" inverted circular />
+              <Icon name="thermometer half" color="orange" inverted circular />
               <Header.Content>Climatização</Header.Content>
             </Header>
           </li>
           <li>
             <Header as="h3" icon textAlign="center">
-              <Icon name="users" color="orange" inverted circular />
+              <Icon name="sliders" color="orange" inverted circular />
               <Header.Content>Configurações</Header.Content>
             </Header>
           </li>
           <li>
-            <Link href="/">
+            <Link href="/select-profile">
               <a>
                 <Header as="h3" icon textAlign="center">
-                  <Icon name="users" color="orange" inverted circular />
+                  <Icon name="user" color="orange" inverted circular />
                   <Header.Content>Perfis</Header.Content>
                 </Header>
               </a>
@@ -74,7 +73,9 @@ class DashboardPage extends Component {
           }
 
           ul li :global(.circular.icon) {
-            margin-bottom: 10px;
+            color: rgba(255, 255, 255, .6) !important;
+            font-size: 2.2em !important;
+            margin-bottom: 15px;
           }
 
           li :global(.content) {
@@ -84,27 +85,27 @@ class DashboardPage extends Component {
           }
 
           li:first-child :global(.circular.icon) {
-            background-color: #f9bc2e !important;
+            background-color: #b0cc00 !important;
           }
 
           li:nth-child(2) :global(.circular.icon) {
-            background-color: #b5ca31 !important;
+            background-color: #00bc37 !important;
           }
 
           li:nth-child(3) :global(.circular.icon) {
-            background-color: #2987cd !important;
+            background-color: #0088d3 !important;
           }
 
           li:nth-child(4) :global(.circular.icon) {
-            background-color: #f0712c !important;
+            background-color: #ff6800 !important;
           }
 
           li:nth-child(5) :global(.circular.icon) {
-            background-color: #de3e96 !important;
+            background-color: #f22499 !important;
           }
 
           li:nth-child(6) :global(.circular.icon) {
-            background-color: #a23bc5 !important;
+            background-color: #b02ccc !important;
           }
 
         `}</style>

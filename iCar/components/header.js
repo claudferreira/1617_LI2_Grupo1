@@ -35,7 +35,7 @@ class Header extends Component {
             <Icon name="signal" />
             <Icon name="bluetooth alternative" />
             { currentUser
-              ? <H as="h4">{currentUser.firstName} {currentUser.lastName}</H>
+              ? <H as="h4">{currentUser.name}</H>
               : null
             }
           </div>
@@ -55,7 +55,7 @@ class Header extends Component {
           header {
             align-items: center;
             background: rgba(34, 39, 53, .6);
-            color: #fff;
+            color: rgba(255, 255, 255, .6);
             display: flex;
             height: 30px;
             justify-content: space-between;
@@ -70,6 +70,12 @@ class Header extends Component {
           div {
             align-items: center;
             display: flex;
+
+            & :nth-child(2) {
+              position: absolute;
+              left: 50%;
+              transform: translateX(-50%);
+            }
           }
 
           header :global(.icon) {
@@ -77,7 +83,7 @@ class Header extends Component {
           }
 
           header :global(.ui.header) {
-            color: #fff;
+            color: rgba(255, 255, 255, .6);
             margin: 0;
           }
         `}</style>

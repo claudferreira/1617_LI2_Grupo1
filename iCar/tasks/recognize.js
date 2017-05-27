@@ -3,16 +3,25 @@ const cv = require('opencv')
 const path = require('path')
 
 const COLOR = [0, 255, 0]
-const trainningDataPath = path.resolve(__dirname, '../data/trainning/faces.yml')
+const trainingDataPath = path.resolve(__dirname, '../data/training/faces.yml')
+let _recognizer
 
 class FaceRecognizer {
   constructor() {
     this.detector = new cv.CascadeClassifier(path.resolve(__dirname, '../data/detection/front-face.xml'))
+  }
 
-    if (fs.existsSync(trainningDataPath)) {
-      this.recognizer = new cv.FaceRecognizer()
-      this.recognizer.loadSync(trainningDataPath)
+  get recognizer() {
+    if (_recognizer) {
+      return _recognizer
     }
+
+    if (fs.existsSync(trainingDataPath)) {
+      _recognizer = new cv.FaceRecognizer()
+      _recognizer.loadSync(trainingDataPath)
+    }
+
+    return null
   }
 
   detectFaces(img) {
@@ -30,31 +39,45 @@ class FaceRecognizer {
   }
 
   recognizeFace(imageData, callback = () => null) {
-    const image = imageData.split(',')[1]
+    return new Promise((resolve, reject) => {
+      const image = imageData.split(',')[1]
 
-    cv.readImage(Buffer.from(image, 'base64'), (err, img) => {
-      if (err) throw err
+      cv.readImage(Buffer.from(image, 'base64'), (err, img) => {
+        if (err) return reject(err)
 
-      if (!img.width() || !img.height()) return
+        if (!img.width() || !img.height()) return
 
-      this.detectFaces(img)
-        .then(faces => {
-          let data = { id: null, confidence: 100, position: null }
+        this.detectFaces(img)
+          .then(faces => {
+            let data = { id: null, confidence: 100, position: null }
 
-          if (faces.length) {
-            img.cvtColor('CV_BGR2GRAY')
+            if (faces.length) {
+              this.reloadTrainingData()
 
-            const face = faces[0]
-            const { x, y, width, height } = face
-            const user = this.recognizer ? this.recognizer.predictSync(img) : null
+              const face = faces[0]
+              const { x, y, width, height } = face
+              const crop = img.roi(x, y, width, height)
 
-            data = Object.assign({}, user, { position: { x, y, width, height } })
-          }
+              crop.resize(64, 64)
+              crop.cvtColor('CV_BGR2GRAY')
+              crop.equalizeHist()
 
-          callback(data)
-        })
-        .catch(err => { throw err })
+              const user = this.recognizer ? this.recognizer.predictSync(crop) : null
+
+              data = Object.assign({}, user, { position: { x, y, width, height } })
+            }
+
+            resolve(data)
+          })
+          .catch(err => reject(err))
+      })
     })
+  }
+
+  reloadTrainingData() {
+    if (this.recognizer) {
+      this.recognizer.loadSync(trainingDataPath)
+    }
   }
 }
 

@@ -1,6 +1,6 @@
 {
   "presets": [
-    "next/babel"
+    "./babel-preset"
   ],
   "plugins": [
     "transform-decorators-legacy"

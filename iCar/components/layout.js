@@ -10,8 +10,8 @@ class Layout extends Component {
   componentWillMount() {
     const { dispatch, users } = this.props
 
-    if (!users) {
-      fetch('http://localhost:3000/users')
+    if (!users && typeof window !== 'undefined') {
+      fetch(`${window.location.origin}/users`)
         .then(res => res.json())
         .then(users => dispatch(setUsers(users)))
     }
