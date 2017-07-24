@@ -7,7 +7,7 @@ Desenvolvimento de interface com o utilizador que permita uma fácil e intuitiva
 * `opencv 2.4.x`
 * `node`
 * `npm`
-* `next.js` (`npm install -g next`)
+* `next.js` (npm install -g next)
 
 ### Instalação e execução (Mac OS)
 

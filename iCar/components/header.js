@@ -1,6 +1,7 @@
 import { Component } from 'react'
 import { connect } from 'react-redux'
 import { Icon, Header as H } from 'semantic-ui-react'
+import Link from 'next/link'
 
 const getTime = () => {
   const options = {
@@ -28,12 +29,21 @@ class Header extends Component {
     const { currentUser, classes } = this.props
     const { time } = this.state
 
+    if (!currentUser) {
+        return null
+    }
+
     return (
       <div>
-        <header>
+        <header className="container">
           <div>
             <Icon name="signal" />
             <Icon name="bluetooth alternative" />
+            <Icon name="clock" />
+            <H as="h4">{time}</H>
+          </div>
+
+          <div>
             { currentUser
               ? <H as="h4">{currentUser.name}</H>
               : null
@@ -41,13 +51,11 @@ class Header extends Component {
           </div>
 
           <div>
-            <Icon name="clock" />
-            <H as="h4">{time}</H>
-          </div>
-
-          <div>
-            <Icon name="thermometer three quarters" />
-            <H as="h4">15ºC</H>
+            <Link href="/select-profile">
+              <a className="ui button icon basic inverted profiles-button">
+                Perfis <Icon name="right arrow" />
+              </a>
+            </Link>
           </div>
         </header>
 
@@ -60,11 +68,20 @@ class Header extends Component {
             height: 30px;
             justify-content: space-between;
             left: 0;
-            padding: 0 10px;
+            padding: 0 0 0 10px;
             position: absolute;
             right: 0;
             top: 0;
-            z-index: 1;
+            z-index: 1000;
+          }
+
+          .container :global(.ui.basic.button.profiles-button) {
+            box-shadow: none !important;
+            font-size: 16px;
+          }
+
+          .container :global(.ui.basic.button.profiles-button) :global(.icon) {
+            font-size: 15px;
           }
 
           div {

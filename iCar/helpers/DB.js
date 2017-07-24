@@ -18,6 +18,14 @@ class DB {
 
     this._save(JSON.stringify(users, null, 2))
   }
+  
+  removeUser(id) {
+    const users = require(dbPath)
+
+    delete users[id]
+
+    this._save(JSON.stringify(users, null, 2))
+  }
 
   _save(data) {
     fs.writeFileSync(dbPath, data)

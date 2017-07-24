@@ -1,13 +1,20 @@
+import io from 'socket.io-client'
+
 import { Component } from 'react'
 import { connect } from 'react-redux'
 import Link from 'next/link'
 import fetch from 'isomorphic-fetch'
 
 import Header from '../components/header'
+import Footer from '../components/footer'
 import { setUsers } from '../helpers/store'
 
 class Layout extends Component {
   componentWillMount() {
+    if (typeof window !== 'undefined' && !window.socket) {
+      window.socket = io(window.location.origin)
+    }
+
     const { dispatch, users } = this.props
 
     if (!users && typeof window !== 'undefined') {
@@ -23,7 +30,8 @@ class Layout extends Component {
         <div className="container">
           {this.props.children}
 
-          <Header />
+          { !this.props.hideHeader && <Header /> }
+          { !this.props.hideFooter && <Footer /> }
         </div>
 
         <style jsx>{`

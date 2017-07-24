@@ -1,8 +1,7 @@
-import io from 'socket.io-client'
 import Router from 'next/router'
 import withRedux from 'next-redux-wrapper'
 import { Component } from 'react'
-import { Header, Button, Icon } from 'semantic-ui-react'
+import { Header, Button, Loader, Message } from 'semantic-ui-react'
 
 import Layout from '../components/layout'
 import TrainingOverlay from '../components/training-overlay'
@@ -10,19 +9,30 @@ import { initStore, setCurrentUser } from '../helpers/store'
 
 const canvasSize = { width: 800, height: 600 }
 const recognizingIntervalTimeout = 750
-const trainingPhotosCount = 50
+const trainingPhotosCount = 30
 
+let hideMessageTimeout
 const lastUserId = users => Object.keys(users).map(id => parseInt(id)).sort().pop() || 0
 
 class HomePage extends Component {
-  state = {
-    showAddUserButton: false,
-    istraining: false,
-    percentage: 0,
+  constructor(props) {
+    super(props)
+
+    this.state = {
+      showAddUserButton: false,
+      isTraining: false,
+      percentage: 0,
+      savedUserName: props.url.query.saved,
+    }
   }
 
   componentDidMount () {
-    const istraining = this.props.url.query.training !== undefined
+    const isTraining = this.props.url.query.training !== undefined
+    const { savedUserName } = this.state
+
+    if (savedUserName) {
+      hideMessageTimeout = setTimeout(this.onDismissMessage, 5000)
+    }
 
     this.videoContext = this.videoCanvas.getContext('2d')
 
@@ -32,9 +42,9 @@ class HomePage extends Component {
     this.overlayContext.lineCap = 'round'
     this.overlayContext.setLineDash([2, 15])
 
-    this.socket = io(window.location.origin)
-    this.socket.on('faceDetected', this.handleFaceDetected)
-    this.socket.on('userTrainned', this.handleUserTrainned)
+    window.socket.on('faceDetected', this.handleFaceDetected)
+    window.socket.on('userTrainned', this.handleUserTrainned)
+    window.socket.on('start-training', () => Router.push('/?training=1'))
 
     if (this.video && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
@@ -42,12 +52,8 @@ class HomePage extends Component {
         this.video.src = window.URL.createObjectURL(this.cameraStream)
 
         this.video.play().then(() => {
-          if (!istraining) {
-            this.recognizingInterval = setInterval(() => {
-              this.videoContext.drawImage(this.video, 0, 0, canvasSize.width, canvasSize.height)
-
-              this.socket.emit('recognizeFace', this.videoCanvas.toDataURL('image/jpeg', 1))
-            }, recognizingIntervalTimeout)
+          if (!isTraining) {
+            this.startDetecting()
           } else {
             this.trainNewUser()
           }
@@ -56,16 +62,25 @@ class HomePage extends Component {
     }
   }
 
+  componentWillReceiveProps(nextProps) {
+    if (!this.props.url.query.training && nextProps.url.query.training) {
+      this.trainNewUser()
+    }
+  }
+
   componentWillUnmount () {
     clearInterval(this.recognizingInterval)
     clearInterval(this.trainingInterval)
+    clearTimeout(hideMessageTimeout)
 
     if (this.video) {
       this.video.pause()
       this.cameraStream.getTracks()[0].stop()
     }
+  }
 
-    this.socket.close()
+  onDismissMessage = () => {
+    this.setState({ savedUserName: null })
   }
 
   drawFaceOverlay({ x, y, width, height }) {
@@ -90,22 +105,40 @@ class HomePage extends Component {
   }
 
   handleFaceDetected = data => {
-    const { dispatch, users } = this.props
-    const { id, position, ...userData} = data
+    const { dispatch, users, currentUser } = this.props
+    const { isTraining } = this.state
+    const { id, position, ...userData } = data
 
     this.clearFaceOverlay()
 
+    if (isTraining) {
+      return
+    }
+
+
     if (id) {
+      if (currentUser && currentUser.id === id) {
+        return
+      }
+
       this.setState({ showAddUserButton: false })
 
       dispatch(setCurrentUser({ id, ...userData }))
 
-      Router.push('/dashboard')
+      window.socket.emit('update-settings', userData.settings)
     } else if (position) {
       this.drawFaceOverlay(position)
 
       this.setState({ showAddUserButton: true })
     }
+  }
+
+  startDetecting = () => {
+    this.recognizingInterval = setInterval(() => {
+      this.videoContext.drawImage(this.video, 0, 0, canvasSize.width, canvasSize.height)
+
+      window.socket.emit('recognizeFace', this.videoCanvas.toDataURL('image/jpeg', 1))
+    }, recognizingIntervalTimeout)
   }
 
   trainNewUser = () => {
@@ -117,23 +150,23 @@ class HomePage extends Component {
     this.setState({
       showAddUserButton: false,
       trainingPhotoIndex: 0,
-      istraining: true,
+      isTraining: true,
     })
 
     const newUserId = lastUserId(users) + 1
 
-    this.socket.emit(`removeUser`, newUserId)
+    window.socket.emit(`removeUser`, newUserId)
 
     this.trainingInterval = setInterval(() => {
       this.setState({ trainingPhotoIndex: this.state.trainingPhotoIndex + 1 }, () => {
         if (this.state.trainingPhotoIndex >= trainingPhotosCount) {
           clearInterval(this.trainingInterval)
 
-          this.socket.emit(`trainUser`, newUserId)
+          window.socket.emit(`trainUser`, newUserId)
         } else {
           this.videoContext.drawImage(this.video, 0, 0, canvasSize.width, canvasSize.height)
 
-          this.socket.emit(
+          window.socket.emit(
             `saveUserPhoto`,
             this.videoCanvas.toDataURL('image/jpeg', 1),
             newUserId,
@@ -151,27 +184,32 @@ class HomePage extends Component {
 
     const userId = lastUserId(users) + 1
 
-    this.socket.emit(`removeUser`, userId)
+    window.socket.emit(`removeUser`, userId)
 
-    this.setState({ istraining: false, trainingPhotoIndex: 0 })
-    this.goToDashboard()
+    this.setState({ isTraining: false, trainingPhotoIndex: 0 })
+    this.startDetecting()
   }
 
   handleUserTrainned = id => {
-    Router.push(`/profile?id=${id}`)
-  }
-
-  goToDashboard = () => {
-    Router.push('/dashboard')
+    Router.push(`/profile?id=${id}&isNew=1`)
   }
 
   render () {
-    const { showAddUserButton, istraining, trainingPhotoIndex } = this.state
+    const { savedUserName, showAddUserButton, isTraining, trainingPhotoIndex } = this.state
 
     return (
-      <Layout>
+      <Layout hideHeader={ isTraining } hideFooter={ isTraining }>
+        {savedUserName
+          ? <Message
+            onDismiss={this.onDismissMessage}
+            header={`Perfil "${savedUserName}" salvo com sucesso.`}
+            onClick={this.onDismissMessage}
+          />
+          : ''
+        }
+
         <div>
-          <Icon loading name="spinner" size="massive" />
+          <Loader active inverted size="massive" />
 
           <video
             ref={el => this.video = el}
@@ -189,12 +227,12 @@ class HomePage extends Component {
 
           <canvas
             ref={el => this.overlayCanvas = el}
-            className={`overlayCanvas ${istraining ? 'hidden' : ''}`}
+            className={`overlayCanvas ${isTraining ? 'hidden' : ''}`}
             width={canvasSize.width}
             height={canvasSize.height}
           />
 
-          { istraining
+          { isTraining
             ? (
               <div className="training-container">
                 <TrainingOverlay percentage={Math.round(trainingPhotoIndex / trainingPhotosCount * 100)} />
@@ -226,13 +264,6 @@ class HomePage extends Component {
                   size="big"
                   onClick={this.trainNewUser}
                 />
-                <Button
-                  content="Ignorar"
-                  icon="arrow right"
-                  labelPosition="right"
-                  size="big"
-                  onClick={this.goToDashboard}
-                />
               </div>
             )
             : null
@@ -240,6 +271,23 @@ class HomePage extends Component {
         </div>
 
         <style jsx>{`
+          :global(.ui.message) {
+            box-shadow: none;
+            left: 20px;
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            z-index: 10000;
+          }
+
+          div :global(.ui.loader) {
+            left: 50%;
+            position: absolute;
+            top: 50%;
+            margin: -.5em 0 0 -.5em;
+            z-index: 0;
+          }
+
           .videoCanvas {
             left: -100000px;
             position: absolute;
@@ -264,16 +312,9 @@ class HomePage extends Component {
           .buttons {
             left: 50%;
             position: absolute;
-            bottom: 20px;
+            bottom: 40px;
             transform: translateX(-50%);
             z-index: 3;
-          }
-
-          div :global(.spinner.icon) {
-            left: 50%;
-            position: absolute;
-            top: 50%;
-            margin: -.5em 0 0 -.5em;
           }
 
           .training-container {

@@ -1,4 +1,3 @@
-import io from 'socket.io-client'
 import withRedux from 'next-redux-wrapper'
 import Link from 'next/link'
 import Router from 'next/router'
@@ -29,10 +28,10 @@ class ProfilePage extends Component {
   constructor(props) {
     super(props)
 
-    const { users, url: { query: { id } } }  = props
+    const { users, url: { query: { id, isNew } } }  = props
     const user = (users && users[id]) ? users[id] : emptyUser
 
-    this.state = { id, user, initialValues: user }
+    this.state = { id, isNew, user, initialValues: user }
   }
 
   updateUserName = e => {
@@ -62,32 +61,30 @@ class ProfilePage extends Component {
     }
 
     const { users, currentUser, dispatch } = this.props
-    const { id, user } = this.state
+    const { id, user, isNew } = this.state
 
     if (!user.name) {
       return
     }
 
-    const socket = io(window.location.origin)
+    window.socket.emit('saveUserSettings', id, user)
 
-    socket.on('connect', () => {
-      socket.emit('saveUserSettings', id, user)
+    dispatch(setUsers({ ...users, [id]: user }))
 
-      dispatch(setUsers({ ...users, [id]: user }))
+    if (isNew) {
+      dispatch(setCurrentUser({ id, ...user }))
 
-      if (!currentUser) {
-        dispatch(setCurrentUser({ id, ...user }))
-      }
+      window.socket.emit('update-settings', user.settings)
+    }
 
-      Router.push(`/dashboard?saved=${user.name}`)
-    })
+    Router.push(`/?saved=${user.name}`)
   }
 
   render () {
     const { user, initialValues } = this.state
 
     return (
-      <Layout>
+      <Layout hideHeader hideFooter>
         <div className="container">
           <Header as="h1" textAlign="center">
             {initialValues.name
@@ -140,14 +137,14 @@ class ProfilePage extends Component {
                 Salvar
               </Button>
 
-              <Link href="/dashboard"><a className="ui button">Cancelar</a></Link>
+              <Link href="/"><a className="ui button">Cancelar</a></Link>
             </Button.Group>
           </Form>
         </div>
 
         <style jsx>{`
           .container {
-            padding: 60px 125px;
+            padding: 30px 125px 60px;
           }
 
           .container :global(.ui.header) {

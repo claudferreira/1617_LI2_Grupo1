@@ -2,30 +2,89 @@ import withRedux from 'next-redux-wrapper'
 import Link from 'next/link'
 import Router from 'next/router'
 import { Component } from 'react'
-import { Icon, Header, Button } from 'semantic-ui-react'
+import { Icon, Header, Button, Modal, Grid } from 'semantic-ui-react'
 
 import Layout from '../components/layout'
-import { initStore, setCurrentUser } from '../helpers/store'
+import { initStore, setCurrentUser, deleteUser } from '../helpers/store'
 
 class SelectProfilePage extends Component {
-  // ToDo: remove this
-  componentDidUpdate() {
-    const { currentUser, users, dispatch } = this.props
-    const userIds = Object.keys(users || {})
-
-    if (!currentUser && userIds.length) {
-      const firstUser = users[userIds[0]]
-
-      dispatch(setCurrentUser({ id: userIds[0], ...firstUser }))
-    }
+  state = {
+    userToDelete: null,
   }
 
-  setCurrentUser = (id, data) => {
+  selectUser = (id, data) => {
     const { dispatch } = this.props
+
+    window.socket.emit('update-settings', data.settings)
 
     dispatch(setCurrentUser({ id, ...data }))
 
-    Router.push('/dashboard')
+    Router.push('/')
+  }
+
+  confirmDeleteUser = user => {
+    this.setState({ userToDelete: user })
+  }
+
+  hideConfirmDeleteModal = () => {
+    this.setState({ userToDelete: null })
+  }
+
+  performDeleteUser = () => {
+    const { userToDelete } = this.state
+    const { currentUser, dispatch } = this.props
+
+    if (!userToDelete) {
+      return
+    }
+
+    window.socket.emit('removeUser', userToDelete.id)
+
+    dispatch(deleteUser(userToDelete.id))
+
+    if (currentUser && userToDelete.id == currentUser.id) {
+      dispatch(setCurrentUser(null))
+    }
+
+    this.hideConfirmDeleteModal()
+  }
+
+  renderConfirmDeleteModal = () => {
+    const { userToDelete } = this.state
+
+    if (!this.container || userToDelete === null) {
+      return null
+    }
+
+    return (
+      <Modal open basic size="small" mountNode={this.container}>
+        <Header as="h2" icon textAlign="center">
+          <Icon name="user delete" />
+          <Header.Content>Apagar perfil "{userToDelete.name}"</Header.Content>
+        </Header>
+        <Header as="h4" textAlign="center">Todas a preferências associadas a esse perfil serão eliminadas.</Header>
+
+        <Grid columns='equal'>
+          <Grid.Row>
+            <Grid.Column>
+              <Button onClick={this.hideConfirmDeleteModal} size="big" fluid>Cancelar</Button>
+            </Grid.Column>
+
+            <Grid.Column>
+              <Button
+                onClick={this.performDeleteUser}
+                size="big"
+                fluid
+                color="red"
+                content="Apagar"
+                icon="trash"
+                labelPosition="right"
+              />
+            </Grid.Column>
+          </Grid.Row>
+        </Grid>
+      </Modal>
+    )
   }
 
   render () {
@@ -37,10 +96,14 @@ class SelectProfilePage extends Component {
 
     const currentUserId = currentUser ? currentUser.id : false
 
+    if (!this.container) {
+      setTimeout(() => this.forceUpdate())
+    }
+
     return (
-      <Layout>
-        <div className="container">
-          <Link href="/dashboard">
+      <Layout hideHeader hideFooter>
+        <div ref={el => this.container = el} className="container">
+          <Link href="/">
             <a className="ui button icon basic inverted back-button">
               <Icon name="left arrow" /> Voltar
             </a>
@@ -57,7 +120,7 @@ class SelectProfilePage extends Component {
                   content={user.name}
                   icon="checkmark"
                   labelPosition="left"
-                  onClick={() => this.setCurrentUser(id, user)}
+                  onClick={() => this.selectUser(id, user)}
                 />
 
                 <Link href={`/profile?id=${id}`}>
@@ -66,7 +129,9 @@ class SelectProfilePage extends Component {
                   </a>
                 </Link>
 
-                <Button basic inverted icon><Icon name="trash" /></Button>
+                <Button basic inverted icon onClick={() => this.confirmDeleteUser({ id, ...user })}>
+                  <Icon name="trash" />
+                </Button>
               </li>
             ))}
           </ul>
@@ -77,11 +142,14 @@ class SelectProfilePage extends Component {
             </a>
           </Link>
         </div>
+
+        {this.renderConfirmDeleteModal()}
+
         <style jsx>{`
           .container {
             display: flex;
             flex-direction: column;
-            padding: 60px 125px;
+            padding: 30px 125px 60px;
             position: relative;
             height: 100%;
           }
@@ -90,7 +158,7 @@ class SelectProfilePage extends Component {
             position: absolute;
             box-shadow: none !important;
             font-size: 16px;
-            top: 60px;
+            top: 30px;
             left: 15px;
           }
 
@@ -167,6 +235,16 @@ class SelectProfilePage extends Component {
 
           .container > :global(.ui.button:last-child) {
             margin-top: auto;
+          }
+
+          :global(.ui.modals.visible) {
+            background: rgba(39, 44, 59, .95);
+            position: absolute;
+          }
+
+          :global(.ui.modals.visible) :global(h2) {
+            margin-bottom: 0 !important;
+            padding-bottom: 0;
           }
         `}</style>
       </Layout>

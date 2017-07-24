@@ -34,7 +34,7 @@ class FaceRecognizer {
         if (err) reject(err)
 
         resolve(faces)
-      }, 1.3, 5)
+      }, 2.0, 5)
     })
   }
 
