@@ -62,11 +62,11 @@ board.on('ready', () => {
 
       isUpdatingSettings = true
 
-      const delay = 500
+      const delay = 1000
       const seatLed = new five.Led(8)
       const mirrorsLed = new five.Led(9)
-      const seatValue = { 0: 2, 50: 4, 100: 8 }[settings.seat.value];
-      const mirrorsValue = { 0: 2, 50: 4, 100: 8 }[settings.mirrors.value];
+      const seatValue = { 0: 2, 50: 5, 100: 20 }[settings.seat.value];
+      const mirrorsValue = { 0: 2, 50: 5, 100: 20 }[settings.mirrors.value];
 
       clearTimeout(seatLedBlinkTimout)
       clearTimeout(mirrorsLedBlinkTimout)

@@ -9,7 +9,7 @@ import { initStore, setCurrentUser } from '../helpers/store'
 
 const canvasSize = { width: 800, height: 600 }
 const recognizingIntervalTimeout = 750
-const trainingPhotosCount = 30
+const trainingPhotosCount = 50
 
 let hideMessageTimeout
 const lastUserId = users => Object.keys(users).map(id => parseInt(id)).sort().pop() || 0
